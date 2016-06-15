@@ -16,7 +16,7 @@ luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
 komponent_id = ["ctl00_cph_Map_ctl00_gwStation_ctl02_Label2", "PM10", "PM2.5", "NO2", "O3"]
 
 current_date = date.today().isoformat()
-# parsing data
+
 for sted in luft_map:
     text_from_site = requests.get(luft_map[sted])
     if text_from_site.status_code == 200:
