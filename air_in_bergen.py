@@ -6,15 +6,15 @@ import timestring
 #  import time
 from datetime import date
 import psycopg2
-#  import pyodbc
 
+# new_db just to test if everything works
 connect_db = psycopg2.connect(database="new_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
-#  connect_db = psycopg2.connect(database="friskby_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
-
+#  connect_db = psycopg2.connect(database="friskby_db", user="postgres", password="BAZeN49Def2X",
+# host="127.0.0.1", port="5432")
 print ("Opened database successfully")
-
 cur = connect_db.cursor()
 all_db_values = ['PLACE', 'DATE_TIME', 'PM10', 'PM25', 'NO2', 'O3']
+
 
 luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
                              "home/overview.aspx?type=2&topic=1&id=%7b4ff685c1-ad51-4468-b2fc-08345d11f447%7d",
@@ -24,10 +24,11 @@ luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
                       "overview.aspx?type=2&topic=1&id=%7bceade2ac-e62f-4e50-af7c-347e402fff27%7d",
             "RAADHUSET": "http://www.luftkvalitet.info/home/"
                          "overview.aspx?type=2&topic=1&id=%7b5b0ff070-e6e6-4f60-88a3-bd923ac3a7e6%7d"}
+# keys for parsing data
 komponent_id = ["ctl00_cph_Map_ctl00_gwStation_ctl02_Label2", "PM10", "PM2.5", "NO2", "O3"]
 
 current_date = date.today().isoformat()
-# '''
+
 for sted in luft_map:
     text_from_site = requests.get(luft_map[sted])
     if text_from_site.status_code == 200:
@@ -35,9 +36,17 @@ for sted in luft_map:
         translation_table = dict.fromkeys(map(ord, '"<>='), ' ')
         text_from_site = text_from_site.translate(translation_table)
         t_split = text_from_site.split()
-        k = 27  # konstanta
+
+        k = 27  #  constant
+
+        #  a new list to save indexes of components
         komponent_index = []
+
+        #  temporary list to save keys for our values. The number of keys is not a constant
         temp_komp_id = []
+
+        #  temporary list for db fields for values we are going to add since the number of values can change (O3)
+        temp_db_fields = ['PLACE']
         for i in range(len(komponent_id)):
             try:
                 index = t_split.index(komponent_id[i], 0, -1)
@@ -46,60 +55,33 @@ for sted in luft_map:
             else:
                 komponent_index.append(index)
                 temp_komp_id.append(komponent_id[i])
-        for i in range(len(temp_komp_id)):
-            if temp_komp_id[i] == "ctl00_cph_Map_ctl00_gwStation_ctl02_Label2":
-                temp_komp_id[i] = "time"
-        #  here instead of output we have to send data to DB
-        #  but before we do it we have to check if temp_komp_id is not empty, like if len(temp_komp_id) > 0:
+                temp_db_fields.append(all_db_values[i+1])
 
-        #  date = '2016-06-16 15:00'
-        #  print(timestring.Date(date))
+        #  values we are going to add to db
         db_input = []
         if len(temp_komp_id) > 0:
             db_input.append(sted)
             i = 0
             for el in komponent_index:
                 a = el + k
-                if temp_komp_id[i] == "time":
+
+                #  format date and time
+                if temp_komp_id[i] == "ctl00_cph_Map_ctl00_gwStation_ctl02_Label2":
                     date_time = current_date + " " + t_split[el + 1]
                     date_time = timestring.Date(date_time)
                     db_input.append(date_time)
-                  #  print(temp_komp_id[i], ":", t_split[el + 1])
+
+                #  and add everything to a tuple
                 else:
                     db_input.append(t_split[a])
-                    #  print(temp_komp_id[i], ": ", t_split[a])
                 i += 1
-        #  NB: O3 exists only for Raadhus(?)
-      #  cur.execute("INSERT INTO LUFTKVALITET_STATISTIKK (PLACE, DATE_TIME, PM10, PM25, NO2, O3)\
-       #             VALUES (db_input)");
-       # connect_db.commit()
-    #   idea from stackoverflow
-        print(db_input)
-        cols = ",".join(all_db_values)
-     #   qmarks = ','.join(['?' for s in cols])
-        insert_statement = "INSERT INTO LUFTKVALITET_STATISTIKK (%s) VALUES (%s);" % (cols, str(db_input))
-        cur.execute(insert_statement)
-        print("records created successfully")
-        connect_db.commit()
-        #  print(sted, current_date)
+
+        # just to check the output. here we have to use smth like
+        # current_date.execute("INSERT INTO LUFTKVALITET_STATISTIKK...)
+        print("fields we are going to add values: ", temp_db_fields)
+        print("values to add to db: ", db_input)
 
     else:
         print("Can't get data from the site")
-# Luftkvalitet_Bergen
-#'''
+
 connect_db.close()
-
-'''data = [
-    ('user_name', "Adam 'Adi' Bobek"), ('user_age', 23), ('person_name', "Jurek 'Jerry' Jimowski") ,('person_age', 28),
-    ]
-data = dict(data)
-cols = ",".join(data.keys())
-qmarks = ','.join(['?' for s in data.keys()])
-values = [v for v in data.values()]
-insert_statement = "INSERT INTO users (%s) VALUES (%s);" % (cols, qmarks)
-
-import pyodbc
-connection = pyodbc.connect('DSN=pglocal')
-cursor = connection.cursor()
-cursor.execute(insert_statement, values)
-connection.commit()'''
