@@ -6,6 +6,7 @@ import timestring
 #  import time
 from datetime import date
 import psycopg2
+#  import pyodbc
 
 connect_db = psycopg2.connect(database="new_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
 #  connect_db = psycopg2.connect(database="friskby_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
@@ -13,6 +14,7 @@ connect_db = psycopg2.connect(database="new_db", user="postgres", password="BAZe
 print ("Opened database successfully")
 
 cur = connect_db.cursor()
+all_db_values = ['PLACE', 'DATE_TIME', 'PM10', 'PM25', 'NO2', 'O3']
 
 luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
                              "home/overview.aspx?type=2&topic=1&id=%7b4ff685c1-ad51-4468-b2fc-08345d11f447%7d",
@@ -67,10 +69,18 @@ for sted in luft_map:
                     db_input.append(t_split[a])
                     #  print(temp_komp_id[i], ": ", t_split[a])
                 i += 1
-        cur.execute("INSERT INTO LUFTKVALITET_STATISTIKK (PLACE, DATE_TIME, PM10, PM25, NO2, O3)\
-                    VALUES (db_input)");
-        connect_db.commit()
+        #  NB: O3 exists only for Raadhus(?)
+      #  cur.execute("INSERT INTO LUFTKVALITET_STATISTIKK (PLACE, DATE_TIME, PM10, PM25, NO2, O3)\
+       #             VALUES (db_input)");
+       # connect_db.commit()
+    #   idea from stackoverflow
+        print(db_input)
+        cols = ",".join(all_db_values)
+     #   qmarks = ','.join(['?' for s in cols])
+        insert_statement = "INSERT INTO LUFTKVALITET_STATISTIKK (%s) VALUES (%s);" % (cols, str(db_input))
+        cur.execute(insert_statement)
         print("records created successfully")
+        connect_db.commit()
         #  print(sted, current_date)
 
     else:
@@ -78,3 +88,18 @@ for sted in luft_map:
 # Luftkvalitet_Bergen
 #'''
 connect_db.close()
+
+'''data = [
+    ('user_name', "Adam 'Adi' Bobek"), ('user_age', 23), ('person_name', "Jurek 'Jerry' Jimowski") ,('person_age', 28),
+    ]
+data = dict(data)
+cols = ",".join(data.keys())
+qmarks = ','.join(['?' for s in data.keys()])
+values = [v for v in data.values()]
+insert_statement = "INSERT INTO users (%s) VALUES (%s);" % (cols, qmarks)
+
+import pyodbc
+connection = pyodbc.connect('DSN=pglocal')
+cursor = connection.cursor()
+cursor.execute(insert_statement, values)
+connection.commit()'''
