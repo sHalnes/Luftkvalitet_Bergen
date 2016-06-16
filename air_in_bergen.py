@@ -1,9 +1,18 @@
 #!/usr/bin/python3
 
 import requests
+import timestring
 #  import re
 #  import time
 from datetime import date
+import psycopg2
+
+connect_db = psycopg2.connect(database="new_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
+#  connect_db = psycopg2.connect(database="friskby_db", user="postgres", password="BAZeN49Def2X", host="127.0.0.1", port="5432")
+
+print ("Opened database successfully")
+
+cur = connect_db.cursor()
 
 luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
                              "home/overview.aspx?type=2&topic=1&id=%7b4ff685c1-ad51-4468-b2fc-08345d11f447%7d",
@@ -16,7 +25,7 @@ luft_map = {"DANMARKSPLASS": "http://luftkvalitet.info/"
 komponent_id = ["ctl00_cph_Map_ctl00_gwStation_ctl02_Label2", "PM10", "PM2.5", "NO2", "O3"]
 
 current_date = date.today().isoformat()
-
+# '''
 for sted in luft_map:
     text_from_site = requests.get(luft_map[sted])
     if text_from_site.status_code == 200:
@@ -39,14 +48,33 @@ for sted in luft_map:
             if temp_komp_id[i] == "ctl00_cph_Map_ctl00_gwStation_ctl02_Label2":
                 temp_komp_id[i] = "time"
         #  here instead of output we have to send data to DB
-        print(sted, current_date)
-        i = 0
-        for el in komponent_index:
-            a = el + k
-            if temp_komp_id[i] == "time":
-                print(temp_komp_id[i], ":", t_split[el+1])
-            else:
-                print(temp_komp_id[i], ": ", t_split[a])
-            i += 1
+        #  but before we do it we have to check if temp_komp_id is not empty, like if len(temp_komp_id) > 0:
+
+        #  date = '2016-06-16 15:00'
+        #  print(timestring.Date(date))
+        db_input = []
+        if len(temp_komp_id) > 0:
+            db_input.append(sted)
+            i = 0
+            for el in komponent_index:
+                a = el + k
+                if temp_komp_id[i] == "time":
+                    date_time = current_date + " " + t_split[el + 1]
+                    date_time = timestring.Date(date_time)
+                    db_input.append(date_time)
+                  #  print(temp_komp_id[i], ":", t_split[el + 1])
+                else:
+                    db_input.append(t_split[a])
+                    #  print(temp_komp_id[i], ": ", t_split[a])
+                i += 1
+        cur.execute("INSERT INTO LUFTKVALITET_STATISTIKK (PLACE, DATE_TIME, PM10, PM25, NO2, O3)\
+                    VALUES (db_input)");
+        connect_db.commit()
+        print("records created successfully")
+        #  print(sted, current_date)
+
     else:
         print("Can't get data from the site")
+# Luftkvalitet_Bergen
+#'''
+connect_db.close()
